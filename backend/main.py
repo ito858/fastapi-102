@@ -30,8 +30,19 @@ async def login(username: str = Form(...), password: str = Form(...), db: Sessio
 
 @app.get("/api/dashboard")
 async def dashboard(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    username = verify_token(token)
+    username = verify_token(token, db)
     if not username:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     user = db.query(User).filter(User.username == username).first()
     return {"username": user.username, "message": "Welcome to your dashboard"}
+
+@app.post("/api/logout")
+async def logout(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    username = verify_token(token, db)
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    # Add token to blacklist
+    blacklisted = BlacklistedToken(token=token)
+    db.add(blacklisted)
+    db.commit()
+    return {"message": "Logged out successfully"}

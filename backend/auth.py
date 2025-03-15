@@ -3,6 +3,8 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
+from sqlalchemy.orm import Session
+
 
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -23,7 +25,11 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def verify_token(token: str):
+def verify_token(token: str, db: Session):
+    # Check if token is blacklisted
+    from models import BlacklistedToken
+    if db.query(BlacklistedToken).filter(BlacklistedToken.token == token).first():
+        return None  # Token is blacklisted
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")

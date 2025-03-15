@@ -42,11 +42,25 @@ def dashboard():
             data = response.json()
             st.write(f"Welcome, {data['username']}!")
             st.write(data["message"])
+
+            # Add logout button
+            if st.button("Logout"):
+                try:
+                    # Call the logout endpoint
+                    headers = {"Authorization": f"Bearer {st.session_state.token}"}
+                    response = requests.post(f"{BASE_URL}/logout", headers=headers)
+                    response.raise_for_status()
+                    st.success("You have been logged out from all devices!")
+                except requests.exceptions.RequestException as e:
+                    st.error(f"Logout failed: {e.response.json()['detail'] if e.response else 'Unknown error'}")
+                st.session_state.token = None
+                st.rerun()  # Refresh the page
         except requests.exceptions.RequestException as e:
             st.error("Failed to load dashboard. Please log in again.")
             st.session_state.token = None
     else:
         st.warning("Please log in to access the dashboard.")
+
 
 st.title("Membership System")
 page = st.sidebar.selectbox("Choose a page", ["Login", "Register", "Dashboard"])
