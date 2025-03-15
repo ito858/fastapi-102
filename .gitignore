@@ -1,0 +1,20 @@
+# Virtual environments
+backend/.venv/
+frontend/.venv/
+
+# Environment variables
+backend/.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# UV lock files (optional, include if you want reproducibility)
+# backend/uv.lock
+# frontend/uv.lock
+
+# Misc
+*.log
+.DS_Store
