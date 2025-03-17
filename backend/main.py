@@ -2,7 +2,7 @@ from fastapi import FastAPI, Form, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from database import get_db, Base, engine
-from models import User
+from models import User, BlacklistedToken
 from auth import hash_password, verify_password, create_access_token, verify_token
 
 app = FastAPI()
