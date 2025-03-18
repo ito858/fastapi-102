@@ -2,7 +2,7 @@ from fastapi import FastAPI, Form, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from database import get_db, Base, engine
-from models import User, BlacklistedToken
+from models import *
 from auth import hash_password, verify_password, create_access_token, verify_token
 
 app = FastAPI()
@@ -19,6 +19,28 @@ async def register(username: str = Form(...), password: str = Form(...), db: Ses
     db.add(new_user)
     db.commit()
     return {"message": "User registered successfully"}
+
+@app.post("/signup/")
+async def signup(user: UserCreate, vip: VIP, db: Session = Depends(get_db)):
+    # Create user
+    if db.query(User).filter(User.username == user.username).first():
+        raise HTTPException(status_code=400, detail="Username already taken")
+    hashed_password = hash_password(user.password)
+    db_user = User(username=user.username, password=hashed_password)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+
+    # Create VIP with IDvip = userid
+#     vip_data = vip.dict()  # Convert Pydantic model to dict
+    vip_data = vip.model_dump()   # Convert Pydantic model to dict
+    vip_data["IDvip"] = db_user.id  # Add IDvip to the dict
+    db_vip = VIPTable(**vip_data)  # Pass the updated dict to SQLAlchemy
+    db.add(db_vip)
+    db.commit()
+    return {"message": "User and VIP registered", "userid": db_user.id}
+
 
 @app.post("/api/login")
 async def login(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
