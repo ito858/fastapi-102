@@ -1,9 +1,13 @@
 from fastapi import FastAPI, Form, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.responses import StreamingResponse  # Add this import
 from sqlalchemy.orm import Session
 from database import get_db, Base, engine
 from models import *
 from auth import hash_password, verify_password, create_access_token, verify_token
+import barcode  # This should work if python-barcode is installed
+from barcode.writer import ImageWriter
+from io import BytesIO
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
@@ -68,3 +72,32 @@ async def logout(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
     db.add(blacklisted)
     db.commit()
     return {"message": "Logged out successfully"}
+
+# New endpoint to generate barcode
+@app.get("/api/barcode")
+async def get_barcode(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    # Verify the token and get the username
+    username = verify_token(token, db)
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    # Fetch the user and their VIP data
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    vip = db.query(VIPTable).filter(VIPTable.IDvip == user.id).first()
+    if not vip or not vip.code:
+        raise HTTPException(status_code=404, detail="VIP membership not found")
+
+    # Generate Code128 barcode
+    code128 = barcode.get_barcode_class('code128')
+    barcode_instance = code128(vip.code, writer=ImageWriter())
+
+    # Save barcode to a BytesIO buffer (in-memory)
+    buffer = BytesIO()
+    barcode_instance.write(buffer)
+    buffer.seek(0)
+
+    # Return the image as a streaming response
+    return StreamingResponse(buffer, media_type="image/png", headers={"Content-Disposition": f"inline; filename={vip.code}.png"})
