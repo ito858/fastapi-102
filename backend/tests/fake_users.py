@@ -30,7 +30,7 @@ for _ in range(20):
     users.append(user)
 
 # Save to JSON file
-with open("fake_users.json", "w") as f:
+with open("fake_users-b2.json", "w") as f:
     json.dump(users, f, indent=4)
 
-print("Generated 20 fake user profiles in 'fake_users.json'")
+print("Generated 20 fake user profiles in 'fake_users-b2.json'")

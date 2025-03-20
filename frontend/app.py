@@ -1,12 +1,16 @@
 import streamlit as st
 import requests
 from vip_dashboard import VIP, display_dashboard
+from signup import signup  # Import the signup function
 import jwt  # Add this to decode the token manually for debugging
 
 BASE_URL = "http://127.0.0.1:8000/api"
 
 if "token" not in st.session_state:
     st.session_state.token = None
+
+if "page" not in st.session_state:
+    st.session_state.page = "Login"  # Default to Login
 
 def login():
     st.subheader("Login")
@@ -19,11 +23,9 @@ def login():
             data = response.json()
             st.session_state.token = data["access_token"]
             st.success("Logged in successfully!")
-            st.sidebar.write(f"Token: {st.session_state.token}")  # Show part of token
             # Decode token to show username (assuming JWT)
             try:
                 decoded = jwt.decode(st.session_state.token, options={"verify_signature": False})
-                st.sidebar.write(f"Username from token: {decoded.get('sub')}")
             except Exception as e:
                 st.sidebar.error(f"Could not decode token: {e}")
         except requests.exceptions.RequestException as e:
@@ -42,7 +44,6 @@ def register():
             st.error(f"Registration failed: {e.response.json()['detail'] if e.response else 'Unknown error'}")
 
 def dashboard():
-    st.subheader("Dashboard")
     if st.session_state.token:
         try:
 #             headers = {"Authorization": f"Bearer {st.session_state.token}"}
@@ -52,13 +53,9 @@ def dashboard():
 #             st.write(f"Welcome, {data['username']}!")
 #             st.write(data["message"])
             headers = {"Authorization": f"Bearer {st.session_state.token}"}
-            st.write(f"Debug: Sending request to {BASE_URL}/api/dashboard")
-            st.write(f"Debug: Sending request with token: {st.session_state.token}")
             response = requests.get(f"{BASE_URL}/dashboard", headers=headers)
-            st.write(f"Debug: Response status code = {response.status_code}")
             if response.status_code == 200:
                 data = response.json()
-                st.write(f"Welcome, {data['username']}!")
                 st.write(f"Welcome, {data['username']}!")
                 vip_data = data["vip"]
                 # Convert hex string back to bytes for img if needed
@@ -95,11 +92,13 @@ def dashboard():
 
 
 st.title("Membership System")
-page = st.sidebar.selectbox("Choose a page", ["Login", "Register", "Dashboard"])
+st.session_state.page = st.sidebar.selectbox("Choose a page", ["Login", "Register", "Sign Up", "Dashboard"], index=["Login", "Register", "Sign Up", "Dashboard"].index(st.session_state.page))
 
-if page == "Login":
+if st.session_state.page == "Login":
     login()
-elif page == "Register":
+elif st.session_state.page == "Register":
     register()
-elif page == "Dashboard":
+elif st.session_state.page == "Sign Up":
+    signup()
+elif st.session_state.page == "Dashboard":
     dashboard()
