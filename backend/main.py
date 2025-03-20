@@ -2,12 +2,14 @@ from fastapi import FastAPI, Form, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import StreamingResponse  # Add this import
 from sqlalchemy.orm import Session
-from database import get_db, Base, engine
-from models import *
 from auth import hash_password, verify_password, create_access_token, verify_token
 import barcode  # This should work if python-barcode is installed
 from barcode.writer import ImageWriter
 from io import BytesIO
+
+from database import get_db, Base, engine
+from models import *
+
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
@@ -54,14 +56,6 @@ async def login(username: str = Form(...), password: str = Form(...), db: Sessio
     token = create_access_token(data={"sub": username})
     return {"access_token": token, "token_type": "bearer"}
 
-@app.get("/api/dashboard")
-async def dashboard(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    username = verify_token(token, db)
-    if not username:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    user = db.query(User).filter(User.username == username).first()
-    return {"username": user.username, "message": "Welcome to your dashboard"}
-
 @app.post("/api/logout")
 async def logout(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     username = verify_token(token, db)
@@ -101,3 +95,78 @@ async def get_barcode(token: str = Depends(oauth2_scheme), db: Session = Depends
 
     # Return the image as a streaming response
     return StreamingResponse(buffer, media_type="image/png", headers={"Content-Disposition": f"inline; filename={vip.code}.png"})
+
+
+# @app.get("/api/dashboard")
+# async def dashboard(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+#     username = verify_token(token, db)
+#     if not username:
+#         raise HTTPException(status_code=401, detail="Invalid or expired token")
+#     user = db.query(User).filter(User.username == username).first()
+#     return {"username": user.username, "message": "Welcome to your dashboard"}
+# upgraded version of dashboard
+@app.get("/api/dashboard")
+async def dashboard(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    username = verify_token(token, db)
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    # Fetch user and VIP data
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    vip = db.query(VIPTable).filter(VIPTable.IDvip == user.id).first()
+    if not vip:
+        raise HTTPException(status_code=404, detail="VIP data not found")
+
+    # Construct response with all relevant data
+    response = {
+        "username": user.username,
+        "vip": {
+            "IDvip": vip.IDvip,
+            "code": vip.code,
+            "nascita": vip.nascita,
+            "cellulare": vip.cellulare,
+            "sms": vip.sms,
+            "Punti": vip.Punti,
+            "Sconto": vip.Sconto,
+            "Ck": vip.Ck,
+            "idata": vip.idata.isoformat() if vip.idata else None,
+            "ioperatore": vip.ioperatore,
+            "inegozio": vip.inegozio,
+            "P_cs": vip.P_cs,
+            "P_ldata": vip.P_ldata,
+            "P_importo": float(vip.P_importo) if vip.P_importo is not None else 0.00,  # Convert Decimal to float
+            "Nome": vip.Nome,
+            "Indirizzo": vip.Indirizzo,
+            "Cap": vip.Cap,
+            "Citta": vip.Citta,
+            "Prov": vip.Prov,
+            "CodiceFiscale": vip.CodiceFiscale,
+            "PartitaIva": vip.PartitaIva,
+            "Email": vip.Email,
+            "sesso": vip.sesso,
+            "VIPanno": vip.VIPanno,
+            "maps": vip.maps,
+            "VIPscadenza": vip.VIPscadenza,
+            "Blocco": vip.Blocco,
+            "cognome": vip.cognome,
+            "SerBlocco": vip.SerBlocco,
+            "SerBloccoBz": vip.SerBloccoBz,
+            "omail": vip.omail,
+            "oposte": vip.oposte,
+            "msg": vip.msg,
+            "msgstr": vip.msgstr,
+            "utime": vip.utime,
+            "upc": vip.upc,
+            "uzt": vip.uzt,
+            "un": vip.un,
+            "lotteria": vip.lotteria,
+            "statoanno": vip.statoanno,
+            "img": vip.img.hex() if vip.img else None,  # Convert bytes to hex string
+            "n": vip.n,
+            "SCOscadenza": vip.SCOscadenza,
+        }
+    }
+    return response
